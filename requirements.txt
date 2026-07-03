@@ -1,0 +1,6 @@
+numpy
+torch
+gymnasium>=0.29
+mujoco>=3.3.3
+warp-lang
+mujoco-warp

@@ -1,0 +1,16 @@
+myo_warp/
+results/
+myowarp.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.warp/
+build/
+dist/
+.venv/
+venv/
+runs/
+wandb/
+checkpoints/
+*.pt
