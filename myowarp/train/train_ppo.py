@@ -90,8 +90,14 @@ def train(config: TrainConfig, *, root: Path, config_path: str, log_dir: Path) -
         rewards_buf = torch.zeros((n_steps, num_envs), dtype=torch.float32, device=device)
         dones_buf = torch.zeros((n_steps, num_envs), dtype=torch.float32, device=device)
         values_buf = torch.zeros((n_steps, num_envs), dtype=torch.float32, device=device)
-        reward_components: dict[str, float] = {}
-        done_components = {"height": 0.0, "trajectory": 0.0, "reference": 0.0}
+        completed_returns_buf = torch.zeros((n_steps, num_envs), dtype=torch.float32, device=device)
+        completed_lengths_buf = torch.zeros((n_steps, num_envs), dtype=torch.float32, device=device)
+        reward_components: dict[str, torch.Tensor] = {}
+        done_components = {
+            "height": torch.tensor(0.0, dtype=torch.float32, device=device),
+            "trajectory": torch.tensor(0.0, dtype=torch.float32, device=device),
+            "reference": torch.tensor(0.0, dtype=torch.float32, device=device),
+        }
 
         for step in range(n_steps):
             obs_buf[step] = obs
@@ -108,17 +114,20 @@ def train(config: TrainConfig, *, root: Path, config_path: str, log_dir: Path) -
 
             current_returns += reward
             current_lengths += 1.0
-            if torch.any(done):
-                completed_returns.extend(current_returns[done].detach().cpu().tolist())
-                completed_lengths.extend(current_lengths[done].detach().cpu().tolist())
-                current_returns[done] = 0.0
-                current_lengths[done] = 0.0
+            done_float = done.float()
+            completed_returns_buf[step] = current_returns * done_float
+            completed_lengths_buf[step] = current_lengths * done_float
+            current_returns = torch.where(done, torch.zeros_like(current_returns), current_returns)
+            current_lengths = torch.where(done, torch.zeros_like(current_lengths), current_lengths)
 
             for key, value in info["reward"].items():
-                reward_components[key] = reward_components.get(key, 0.0) + float(value.mean().detach().cpu())
-            done_components["height"] += float(info["height_done"].float().mean().detach().cpu())
-            done_components["trajectory"] += float(info["trajectory_done"].float().mean().detach().cpu())
-            done_components["reference"] += float(info["out_of_reference"].float().mean().detach().cpu())
+                reward_components[key] = reward_components.get(
+                    key,
+                    torch.tensor(0.0, dtype=torch.float32, device=device),
+                ) + value.mean()
+            done_components["height"] += info["height_done"].float().mean()
+            done_components["trajectory"] += info["trajectory_done"].float().mean()
+            done_components["reference"] += info["out_of_reference"].float().mean()
 
         with torch.no_grad():
             _next_action, _next_logprob, next_value = model.act(obs, deterministic=True)
@@ -184,8 +193,20 @@ def train(config: TrainConfig, *, root: Path, config_path: str, log_dir: Path) -
             if target_kl is not None and approx_kl > 1.5 * target_kl:
                 break
 
+        completed_mask = dones_buf.bool()
+        if torch.any(completed_mask):
+            completed_returns.extend(completed_returns_buf[completed_mask].detach().cpu().tolist())
+            completed_lengths.extend(completed_lengths_buf[completed_mask].detach().cpu().tolist())
         recent_returns = completed_returns[-100:]
         recent_lengths = completed_lengths[-100:]
+        reward_component_metrics = {
+            key: float((value / n_steps).detach().cpu())
+            for key, value in reward_components.items()
+        }
+        done_component_metrics = {
+            key: float((value / n_steps).detach().cpu())
+            for key, value in done_components.items()
+        }
         metrics = {
             "update": update,
             "global_step": global_step,
@@ -197,8 +218,8 @@ def train(config: TrainConfig, *, root: Path, config_path: str, log_dir: Path) -
             "entropy": float(entropy_loss.detach().cpu()),
             "approx_kl": float(approx_kl.detach().cpu()),
             "clip_fraction": float(clip_fraction.detach().cpu()),
-            "reward_components": {key: value / n_steps for key, value in reward_components.items()},
-            "done_components": {key: value / n_steps for key, value in done_components.items()},
+            "reward_components": reward_component_metrics,
+            "done_components": done_component_metrics,
         }
         with metrics_path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(metrics) + "\n")
