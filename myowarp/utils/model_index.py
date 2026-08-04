@@ -41,9 +41,45 @@ class ModelIndex:
     na: int
 
 
+ROOT_FREEJOINT_ALIASES = {
+    "pelvis_tx": (0, 0),
+    "pelvis_tz": (1, 1),
+    "pelvis_ty": (2, 2),
+}
+
+
+def apply_torso_lean(
+    model: mujoco.MjModel,
+    enable_lumbar_joint: bool,
+    lumbar_joint_fixed_angle: float,
+) -> None:
+    """Lean the torso to match ``MyoAssistLegBase._setup``.
+
+    When the lumbar joint is disabled and the model has no ``lumbar_extension``
+    joint (the case for both the tutorial-22 and OSL_KA legs used here),
+    myoassist sets ``body("torso").quat = [1, 0, 0, lumbar_joint_fixed_angle]``.
+    The raw (unnormalized) value is kept identical so MuJoCo/MJWarp kinematics
+    reproduce the same posture as the source pipeline.
+    """
+    if enable_lumbar_joint:
+        return
+    has_lumbar = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, "lumbar_extension") >= 0
+    if has_lumbar:
+        # Neither model shipped here has a lumbar joint, so myoassist's
+        # angle/range/damping fixing branch is intentionally not reproduced.
+        return
+    torso_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "torso")
+    if torso_id < 0:
+        return
+    model.body_quat[torso_id] = [1.0, 0.0, 0.0, float(lumbar_joint_fixed_angle)]
+
+
 def _joint_index(model: mujoco.MjModel, name: str) -> JointIndex:
     joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, name)
     if joint_id < 0:
+        if name in ROOT_FREEJOINT_ALIASES:
+            qpos_adr, qvel_adr = ROOT_FREEJOINT_ALIASES[name]
+            return JointIndex(name=name, joint_id=-1, qpos_adr=qpos_adr, qvel_adr=qvel_adr)
         raise KeyError(f"Joint not found in model: {name}")
     return JointIndex(
         name=name,
@@ -83,7 +119,12 @@ def build_model_index(
         if name is None:
             name = f"actuator_{actuator_id}"
         actuators[name] = actuator_id
-        if name.startswith("Exo_"):
+        if model.na > 0:
+            if actuator_id < model.na:
+                muscle_actuator_ids.append(actuator_id)
+            else:
+                exo_actuator_ids.append(actuator_id)
+        elif name.startswith("Exo_") or name.startswith("osl_"):
             exo_actuator_ids.append(actuator_id)
         else:
             muscle_actuator_ids.append(actuator_id)

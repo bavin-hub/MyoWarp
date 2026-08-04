@@ -1,3 +1,23 @@
 python -m myowarp.train.train_ppo   --config configs/imitation_tutorial_22_separated_net_partial_obs.json   --num-envs 128   --n-steps 64   --batch-size 512   --iterations 200
 
 python -m myowarp.train.view_policy   --config configs/imitation_tutorial_22_separated_net_partial_obs.json   --checkpoint /home/bavin/my_ws/legged_systems/myowarp/results/train_session_20260701-133102/trained_models/step_720896.pt   --device cuda
+
+
+python3 -m myowarp.train.train_ppo \
+  --config configs/imitation_osl80_default.json \
+  --device cuda
+
+python3 -m myowarp.train.eval_policy \
+  --config configs/imitation_osl80_default.json \
+  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
+  --backend cpu \
+  --device cpu
+
+python3 -m myowarp.train.eval_policy \
+  --config configs/imitation_osl80_default.json \
+  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
+  --backend warp \
+  --num-envs 64 \
+  --device cuda
+
+python rigid_bodies/g1_osl/view_stand.py

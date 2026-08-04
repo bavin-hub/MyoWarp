@@ -10,7 +10,8 @@ import torch
 from myowarp.backends import MujocoWarpBackend
 from myowarp.config import TrainConfig
 from myowarp.io import ReferenceData, load_reference_data
-from myowarp.utils import ModelIndex, build_model_index
+from myowarp.utils.model_index import ROOT_FREEJOINT_ALIASES
+from myowarp.utils import ModelIndex, apply_torso_lean, build_model_index
 
 
 class MyoAssistLegWarpEnv:
@@ -36,6 +37,7 @@ class MyoAssistLegWarpEnv:
 
         self.cpu_model = mujoco.MjModel.from_xml_path(str(self.model_path))
         self.cpu_model.opt.timestep = 1.0 / float(self.env_params.physics_sim_framerate)
+        self._apply_torso_lean(self.cpu_model)
         ctrlrange = torch.as_tensor(self.cpu_model.actuator_ctrlrange, dtype=torch.float32, device=self.device)
         self.ctrl_mid = torch.mean(ctrlrange, dim=-1)
         self.ctrl_half_range = (ctrlrange[:, 1] - ctrlrange[:, 0]) / 2.0
@@ -57,6 +59,7 @@ class MyoAssistLegWarpEnv:
             num_envs=self.num_envs,
             device=self.device,
             physics_timestep=1.0 / float(self.env_params.physics_sim_framerate),
+            model_mutator=self._apply_torso_lean,
         )
 
         self.step_count = torch.zeros(self.num_envs, dtype=torch.int32, device=self.device)
@@ -91,6 +94,13 @@ class MyoAssistLegWarpEnv:
         )
         self.reward_average_velocity_per_step = torch.zeros(self.num_envs, dtype=torch.float32, device=self.device)
         self.reward_footstep_delta_time = torch.zeros(self.num_envs, dtype=torch.float32, device=self.device)
+
+    def _apply_torso_lean(self, model: mujoco.MjModel) -> None:
+        apply_torso_lean(
+            model,
+            enable_lumbar_joint=bool(self.env_params.enable_lumbar_joint),
+            lumbar_joint_fixed_angle=float(self.env_params.lumbar_joint_fixed_angle),
+        )
 
     def _resolve_reference_path(self, path: str) -> Path:
         direct = self.root_dir / path
@@ -378,10 +388,18 @@ class MyoAssistLegWarpEnv:
 
     def _joint_qpos_adr(self, name: str) -> int:
         joint_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if joint_id < 0:
+            if name in ROOT_FREEJOINT_ALIASES:
+                return ROOT_FREEJOINT_ALIASES[name][0]
+            raise KeyError(f"Joint not found in model: {name}")
         return int(self.cpu_model.jnt_qposadr[joint_id])
 
     def _joint_qvel_adr(self, name: str) -> int:
         joint_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if joint_id < 0:
+            if name in ROOT_FREEJOINT_ALIASES:
+                return ROOT_FREEJOINT_ALIASES[name][1]
+            raise KeyError(f"Joint not found in model: {name}")
         return int(self.cpu_model.jnt_dofadr[joint_id])
 
     def _qpos_imitation_reward(self) -> torch.Tensor:
@@ -498,7 +516,17 @@ class MyoAssistLegWarpEnv:
         self.activation_square_sum[mask] = 0.0
 
     def _foot_force(self, foot_side: str) -> torch.Tensor:
-        return self._sensor_values(f"{foot_side}_foot")[:, 0] + self._sensor_values(f"{foot_side}_toes")[:, 0]
+        sensor_names = self._foot_force_sensor_names(foot_side)
+        total = torch.zeros(self.num_envs, dtype=torch.float32, device=self.device)
+        for sensor_name in sensor_names:
+            total += self._sensor_values(sensor_name)[:, 0]
+        return total
+
+    def _foot_force_sensor_names(self, foot_side: str) -> list[str]:
+        configured = self.env_params.foot_force_sensor_keys.get(foot_side)
+        if configured:
+            return list(configured)
+        return [f"{foot_side}_foot", f"{foot_side}_toes"]
 
     def _sensor_values(self, name: str) -> torch.Tensor:
         sensor_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_SENSOR, name)

@@ -27,6 +27,7 @@ class EnvParams:
     observation_joint_vel_keys: list[str] = field(default_factory=list)
     observation_sensor_keys: list[str] = field(default_factory=list)
     joint_limit_sensor_keys: list[str] = field(default_factory=list)
+    foot_force_sensor_keys: dict[str, list[str]] = field(default_factory=dict)
     terrain_type: str = "flat"
     terrain_params: str = ""
     reward_keys_and_weights: dict[str, Any] = field(default_factory=dict)

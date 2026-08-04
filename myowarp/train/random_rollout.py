@@ -6,7 +6,6 @@ from pathlib import Path
 import torch
 
 from myowarp.config import load_config
-from myowarp.envs import MyoAssistLegWarpEnv
 
 
 def main() -> None:
@@ -15,6 +14,7 @@ def main() -> None:
     parser.add_argument("--num-envs", type=int, default=None)
     parser.add_argument("--steps", type=int, default=10)
     parser.add_argument("--device", default=None)
+    parser.add_argument("--backend", choices=["cpu", "warp"], default="warp")
     args = parser.parse_args()
 
     root = Path.cwd()
@@ -24,7 +24,17 @@ def main() -> None:
     if args.device is not None:
         config.warp_params.device = args.device
 
-    env = MyoAssistLegWarpEnv(config=config, root_dir=root)
+    if args.backend == "cpu":
+        from myowarp.envs.myoassist_leg_cpu import MyoAssistLegCpuEnv
+
+        config.warp_params.num_envs = 1
+        config.env_params.num_envs = 1
+        config.warp_params.device = "cpu"
+        env = MyoAssistLegCpuEnv(config=config, root_dir=root)
+    else:
+        from myowarp.envs.myoassist_leg_warp import MyoAssistLegWarpEnv
+
+        env = MyoAssistLegWarpEnv(config=config, root_dir=root)
     obs = env.reset()
     print(f"obs shape: {tuple(obs.shape)}")
     for step in range(args.steps):

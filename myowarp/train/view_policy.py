@@ -9,7 +9,6 @@ import mujoco.viewer
 import torch
 
 from myowarp.config import load_config
-from myowarp.envs import MyoAssistLegCpuEnv, MyoAssistLegWarpEnv
 from myowarp.policies import GaussianActorCritic
 
 
@@ -33,7 +32,7 @@ def _cause_text(info: dict) -> str:
     return " ".join(active) if active else "unknown"
 
 
-def _copy_world_to_viewer(env: MyoAssistLegWarpEnv, data: mujoco.MjData, world_id: int = 0) -> None:
+def _copy_world_to_viewer(env, data: mujoco.MjData, world_id: int = 0) -> None:
     qpos = env.backend.get_tensor("qpos")[world_id].detach().cpu().numpy()
     qvel = env.backend.get_tensor("qvel")[world_id].detach().cpu().numpy()
     ctrl = env.backend.get_tensor("ctrl")[world_id].detach().cpu().numpy()
@@ -61,12 +60,16 @@ def main() -> None:
     policy_device = torch.device(args.device or "cpu")
 
     if args.backend == "warp":
+        from myowarp.envs.myoassist_leg_warp import MyoAssistLegWarpEnv
+
         config.warp_params.num_envs = 1
         config.env_params.num_envs = 1
         config.warp_params.device = str(policy_device)
         config.ppo_params["device"] = str(policy_device)
         env = MyoAssistLegWarpEnv(config=config, root_dir=root)
     else:
+        from myowarp.envs.myoassist_leg_cpu import MyoAssistLegCpuEnv
+
         config.warp_params.num_envs = 1
         config.env_params.num_envs = 1
         config.warp_params.device = "cpu"
@@ -81,7 +84,7 @@ def main() -> None:
     model.eval()
 
     obs = env.reset()
-    viewer_data = env.data if isinstance(env, MyoAssistLegCpuEnv) else mujoco.MjData(env.cpu_model)
+    viewer_data = env.data if args.backend == "cpu" else mujoco.MjData(env.cpu_model)
     sleep_dt = env.control_dt / max(args.speed, 1e-6)
     episode_return = 0.0
     episode_length = 0
@@ -104,7 +107,7 @@ def main() -> None:
                 )
                 episode_return = 0.0
                 episode_length = 0
-            if isinstance(env, MyoAssistLegWarpEnv):
+            if args.backend == "warp":
                 _copy_world_to_viewer(env, viewer_data)
             viewer.sync()
             step += 1

@@ -9,7 +9,8 @@ import torch
 
 from myowarp.config import TrainConfig
 from myowarp.io import load_reference_data
-from myowarp.utils import build_model_index
+from myowarp.utils.model_index import ROOT_FREEJOINT_ALIASES
+from myowarp.utils import apply_torso_lean, build_model_index
 
 
 class MyoAssistLegCpuEnv:
@@ -27,6 +28,11 @@ class MyoAssistLegCpuEnv:
 
         self.cpu_model = mujoco.MjModel.from_xml_path(str(self.model_path))
         self.cpu_model.opt.timestep = 1.0 / float(self.env_params.physics_sim_framerate)
+        apply_torso_lean(
+            self.cpu_model,
+            enable_lumbar_joint=bool(self.env_params.enable_lumbar_joint),
+            lumbar_joint_fixed_angle=float(self.env_params.lumbar_joint_fixed_angle),
+        )
         self.data = mujoco.MjData(self.cpu_model)
         ctrlrange = torch.as_tensor(self.cpu_model.actuator_ctrlrange, dtype=torch.float32)
         self.ctrl_mid = torch.mean(ctrlrange, dim=-1)
@@ -278,10 +284,18 @@ class MyoAssistLegCpuEnv:
 
     def _joint_qpos_adr(self, name: str) -> int:
         joint_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if joint_id < 0:
+            if name in ROOT_FREEJOINT_ALIASES:
+                return ROOT_FREEJOINT_ALIASES[name][0]
+            raise KeyError(f"Joint not found in model: {name}")
         return int(self.cpu_model.jnt_qposadr[joint_id])
 
     def _joint_qvel_adr(self, name: str) -> int:
         joint_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_JOINT, name)
+        if joint_id < 0:
+            if name in ROOT_FREEJOINT_ALIASES:
+                return ROOT_FREEJOINT_ALIASES[name][1]
+            raise KeyError(f"Joint not found in model: {name}")
         return int(self.cpu_model.jnt_dofadr[joint_id])
 
     def _termination_causes(self) -> tuple[bool, bool]:
@@ -386,7 +400,16 @@ class MyoAssistLegCpuEnv:
         self.activation_square_sum = 0.0
 
     def _foot_force(self, foot_side: str) -> float:
-        return float((self._sensor_values(f"{foot_side}_foot")[0] + self._sensor_values(f"{foot_side}_toes")[0]).item())
+        total = 0.0
+        for sensor_name in self._foot_force_sensor_names(foot_side):
+            total += float(self._sensor_values(sensor_name)[0].item())
+        return total
+
+    def _foot_force_sensor_names(self, foot_side: str) -> list[str]:
+        configured = self.env_params.foot_force_sensor_keys.get(foot_side)
+        if configured:
+            return list(configured)
+        return [f"{foot_side}_foot", f"{foot_side}_toes"]
 
     def _sensor_values(self, name: str) -> torch.Tensor:
         sensor_id = mujoco.mj_name2id(self.cpu_model, mujoco.mjtObj.mjOBJ_SENSOR, name)

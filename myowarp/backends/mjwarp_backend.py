@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Optional
 
 import mujoco
 import torch
@@ -37,6 +37,7 @@ class MujocoWarpBackend:
         num_envs: int,
         device: str = "cuda",
         physics_timestep: float | None = None,
+        model_mutator: Optional[Callable[[mujoco.MjModel], None]] = None,
     ):
         self.model_path = Path(model_path)
         self.num_envs = int(num_envs)
@@ -44,6 +45,10 @@ class MujocoWarpBackend:
         self.cpu_model = mujoco.MjModel.from_xml_path(str(self.model_path))
         if physics_timestep is not None:
             self.cpu_model.opt.timestep = float(physics_timestep)
+        # Apply any model edits (e.g. torso lean) before uploading to Warp, since
+        # put_model snapshots the model and later edits would not take effect.
+        if model_mutator is not None:
+            model_mutator(self.cpu_model)
 
         try:
             import mujoco_warp as mjw  # type: ignore

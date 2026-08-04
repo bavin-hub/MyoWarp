@@ -10,6 +10,8 @@ plain CPU MuJoCo for faster single-policy debugging.
 
 - Tutorial leg imitation config:
   `configs/imitation_tutorial_22_separated_net_partial_obs.json`
+- Default 80-muscle OSL_KA imitation config:
+  `configs/imitation_osl80_default.json`
 - MuJoCo model:
   `models/22muscle_2D/myoLeg22_2D_TUTORIAL.xml`
 - Reference gait data:
@@ -61,6 +63,14 @@ python -m myowarp.train.random_rollout \
   --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
   --num-envs 64 \
   --steps 10
+```
+
+
+OSL 80-muscle CPU checks:
+
+```bash
+python scripts/check_model.py --model models/80muscle/myoLeg80_OSL_KA/myolegs_OSL_KA.xml
+python -m myowarp.train.random_rollout --config configs/imitation_osl80_default.json --backend cpu --num-envs 1 --steps 5
 ```
 
 ## Train
@@ -170,8 +180,9 @@ Use `--speed 0.5` or `--speed 2.0` to slow down or speed up playback.
 - Training simulation runs through MuJoCo Warp; CPU eval/view runs through
   regular MuJoCo.
 - The MyoSuite `MujocoEnv` wrapper is not used here.
-- The active model is intact musculoskeletal legs plus two ankle exo actuators
-  (`Exo_R`, `Exo_L`), not an amputee prosthetic replacement model.
+- The tutorial config uses intact musculoskeletal legs plus two ankle exo actuators
+  (`Exo_R`, `Exo_L`). The OSL config uses the default 80-muscle OSL_KA
+  transfemoral prosthesis model with OSL knee/ankle motors.
 - Exact CPU MuJoCo and MuJoCo Warp dynamics may differ slightly.
 
 ## GitHub / Repo Hygiene

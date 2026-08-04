@@ -6,7 +6,6 @@ from pathlib import Path
 import torch
 
 from myowarp.config import load_config
-from myowarp.envs import MyoAssistLegCpuEnv, MyoAssistLegWarpEnv
 from myowarp.policies import GaussianActorCritic
 
 
@@ -51,12 +50,16 @@ def main() -> None:
     policy_device = torch.device(args.device or "cpu")
 
     if args.backend == "warp":
+        from myowarp.envs.myoassist_leg_warp import MyoAssistLegWarpEnv
+
         config.warp_params.num_envs = args.num_envs
         config.env_params.num_envs = args.num_envs
         config.warp_params.device = str(policy_device)
         config.ppo_params["device"] = str(policy_device)
         env = MyoAssistLegWarpEnv(config=config, root_dir=root)
     else:
+        from myowarp.envs.myoassist_leg_cpu import MyoAssistLegCpuEnv
+
         config.warp_params.num_envs = 1
         config.env_params.num_envs = 1
         config.warp_params.device = "cpu"
