@@ -1,4 +1,4 @@
-# myowarp
+# myowarp (osl exps)
 
 Standalone MuJoCo Warp port of the MyoAssist leg imitation/exo training setup.
 
