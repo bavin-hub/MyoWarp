@@ -1,0 +1,88 @@
+<mujoco model="Open Source Leg">
+  <include file="../../unitree_viewer_scene.xml"/>
+
+  <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+
+  <default>
+    <joint damping="1" armature="0.01" limited="true"/>
+    <geom condim="3" friction="0.8 0.1 0.1"/>
+  </default>
+
+  <asset>
+    <mesh name="osl_socket" file="osl_generic_socket.stl"/>
+    <mesh name="osl_proximal_adapter" file="osl_proximal_adapter_v2.stl"/>
+    <mesh name="osl_knee" file="osl_knee_v2.stl"/>
+    <mesh name="osl_ankle" file="osl_ankle_v2.stl"/>
+    <mesh name="osl_foot" file="osl_custom_foot_v2.stl"/>
+  </asset>
+
+  <worldbody>
+    <!-- The x-axis rotation maps the source model's -Y leg axis to world -Z. -->
+    <body name="prosthetic_socket" pos="0 0 0.58" quat="0.707107 0.707107 0 0">
+      <inertial pos="0 0.101169 0" quat="0.707107 0.707107 0 0"
+        mass="0.849991" diaginertia="0.0039776 0.0039776 0.0027545"/>
+      <geom name="prosthetic_socket_geom" type="mesh" mesh="osl_socket"
+        rgba="0 0 0 0.5"/>
+
+      <body name="osl_femoral_pylon" pos="0 -0.02829 0">
+        <inertial pos="0 0 0" mass="0.0220583" diaginertia="0.001 0.001 0.001"/>
+        <geom name="osl_femoral_pylon_geom" type="cylinder"
+          size="0.012 0.0283944492" quat="0.707035 0.707179 0 0"
+          rgba="0 0 0 1"/>
+
+        <body name="osl_proximal_adapter" pos="0 -0.08441 -0.006">
+          <inertial pos="0 0.02176 0" quat="0.996071 0.0885602 0 0"
+            mass="0.167" diaginertia="0.001 0.001 0.001"/>
+          <geom name="osl_proximal_adapter_geom" type="mesh"
+            mesh="osl_proximal_adapter" rgba="0 0 0 1"/>
+
+          <body name="osl_knee_assembly">
+            <inertial pos="0.00381 -0.05901 0.00918"
+              quat="0.659658 0.705162 0.180917 -0.186728"
+              mass="2.2455" diaginertia="0.00930494 0.00919978 0.00355928"/>
+            <joint name="osl_knee_angle" axis="0 0 -1" range="0 2.0944"/>
+            <geom name="osl_knee_assembly_geom" type="mesh" mesh="osl_knee"
+              rgba="0.8 0.8 0.8 1"/>
+
+            <body name="osl_tibial_pylon" pos="0 -0.2315 0.006">
+              <inertial pos="0 0 0" mass="0.0629248"
+                diaginertia="0.001 0.001 0.001"/>
+              <geom name="osl_tibial_pylon_geom" type="cylinder"
+                size="0.012 0.0704996518" quat="0.707035 0.707179 0 0"
+                rgba="0 0 0 1"/>
+
+              <body name="osl_ankle_assembly" pos="0 -0.1761 -0.006">
+                <inertial pos="-0.00665 0.04539 0.00924"
+                  quat="0.612323 0.440299 -0.442253 0.485396"
+                  mass="1.739" diaginertia="0.00535042 0.00492977 0.0030318"/>
+                <geom name="osl_ankle_assembly_geom" type="mesh" mesh="osl_ankle"
+                  rgba="0.8 0.8 0.8 1"/>
+
+                <body name="osl_foot_assembly">
+                  <inertial pos="0.064562 -0.048401 0.004732"
+                    quat="0.482413 0.245831 0.66522 0.514127"
+                    mass="0.291" diaginertia="0.00145886 0.00139898 0.001"/>
+                  <joint name="osl_ankle_angle" axis="0 0 1"
+                    range="-0.5236 0.5236"/>
+                  <geom name="osl_foot_assembly_geom" type="mesh" mesh="osl_foot"
+                    rgba="0 0 0 1"/>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="osl_knee_torque_actuator" joint="osl_knee_angle"
+      gear="49.4" ctrllimited="true" ctrlrange="-2.88 2.88"/>
+    <motor name="osl_ankle_torque_actuator" joint="osl_ankle_angle"
+      gear="58.4" ctrllimited="true" ctrlrange="-2.88 2.88"/>
+  </actuator>
+
+  <keyframe>
+    <key name="stand" qpos="0 0"/>
+  </keyframe>
+</mujoco>

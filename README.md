@@ -1,217 +1,205 @@
-# myowarp (osl exps)
+# MyoWarp
 
-Standalone MuJoCo Warp port of the MyoAssist leg imitation/exo training setup.
+Standalone MuJoCo-Warp reinforcement-learning tasks for assisted humanoid
+locomotion. Simulation, rewards, training, checkpointing, and evaluation live in
+this repository; RSL-RL is used from the local `rsl_rl` checkout.
 
-This repo is intentionally separate from `myoassist`. Training uses MuJoCo Warp
-for batched GPU simulation, while policy evaluation and visualization can use
-plain CPU MuJoCo for faster single-policy debugging.
+## Implemented tasks
 
-## What Is Ported
+Task 1, `h1_with_osl_velocity`:
 
-- Tutorial leg imitation config:
-  `configs/imitation_tutorial_22_separated_net_partial_obs.json`
-- Default 80-muscle OSL_KA imitation config:
-  `configs/imitation_osl80_default.json`
-- MuJoCo model:
-  `models/22muscle_2D/myoLeg22_2D_TUTORIAL.xml`
-- Reference gait data:
-  `reference_data/short_reference_gait.npz`
-- Batched Warp env:
-  `myowarp/envs/myoassist_leg_warp.py`
-- Single-env CPU MuJoCo eval env:
-  `myowarp/envs/myoassist_leg_cpu.py`
-- Custom PyTorch PPO trainer:
-  `myowarp/train/train_ppo.py`
-- CPU/Warp metric eval:
-  `myowarp/train/eval_policy.py`
-- CPU/Warp GUI viewer:
-  `myowarp/train/view_policy.py`
-- Separated human/exo actor network structure from the MyoAssist config.
+- H1 with a passive-compliance OSL right leg and 26 policy actions.
+- MJLab velocity-task reward semantics and weights, ported locally.
+- 89-value actor and 104-value asymmetric critic observations.
+- Heading-based velocity commands and staged command curriculum.
+- Friction, torso-COM, encoder-bias, push, and observation randomization.
+- Batched MuJoCo-Warp simulation and native RSL-RL 5.x PPO.
+- Checkpoint/resume (including task curriculum state), TensorBoard logging, ONNX
+  export, headless evaluation, and native MuJoCo viewing.
+
+Task 2, `h1_with_osl_tracking`:
+
+- Tracks the 4,490-frame, 50 Hz retargeted H1-with-OSL motion reference.
+- 161-value actor and 287-value asymmetric critic observations.
+- Nine reference-motion reward terms with the MJLab weights and kernels.
+- Torso-anchor and ankle/wrist reference-error terminations.
+- Adaptive failure-weighted frame sampling with checkpoint persistence.
+- Randomized reference-state resets, pushes, friction, torso COM, encoder bias,
+  and observation corruption.
+- Motion metrics and ONNX exports containing both actor and reference data.
+
+Task 3, `h1_with_osl_dual_full_velocity`:
+
+- Two independent full-observation actors trained by one joint PPO objective.
+- A 24-action H1 actor and two-action OSL knee/ankle actor.
+- One shared asymmetric critic and combined log-probability, entropy, and KL.
+- Task #1 rewards, curriculum, contacts, terminations, and randomization unchanged.
+- Additive local RSL-RL `DualMLPModel`; existing single-actor tasks are unaffected.
+
+Task 4, `h1_with_osl_dual_partial_velocity`:
+
+- The H1 actor retains its full 89-value observation and 24 actions.
+- The OSL actor receives only knee/ankle positions and velocities and produces
+  the two OSL actions.
+- The shared critic and Task #1 velocity-training contract remain unchanged.
+
+Task 5, `h1_with_osl_dual_full_tracking`:
+
+- Independent 24-action H1 and two-action OSL actors both receive the full
+  161-value motion-tracking observation.
+- A shared 287-value privileged critic trains with both actors through joint PPO.
+- Task #2 motion rewards, sampler, terminations, metrics, and export are unchanged.
+
+Task 6, `h1_with_osl_dual_partial_tracking`:
+
+- The H1 actor retains its full 161-value tracking observation and 24 actions.
+- The OSL actor sees only knee/ankle positions and velocities and produces two actions.
+- The shared critic and Task #2 motion-tracking contract remain unchanged.
+
+The train/eval pipeline does not import or call MJLab. The existing
+`myowarp/mjlab_tasks` package is retained only as the parity reference while the
+remaining planned tasks are ported.
+
+See [the task specification](docs/h1_with_osl_velocity.md) for the complete
+observation and reward contract.
+The motion contract is in
+[docs/h1_with_osl_tracking.md](docs/h1_with_osl_tracking.md).
+The dual-policy contract is in
+[docs/h1_with_osl_dual_full_velocity.md](docs/h1_with_osl_dual_full_velocity.md).
+The partial-observation contract is in
+[docs/h1_with_osl_dual_partial_velocity.md](docs/h1_with_osl_dual_partial_velocity.md).
+The dual-policy motion contract is in
+[docs/h1_with_osl_dual_full_tracking.md](docs/h1_with_osl_dual_full_tracking.md).
+The partial-observation motion contract is in
+[docs/h1_with_osl_dual_partial_tracking.md](docs/h1_with_osl_dual_partial_tracking.md).
 
 ## Install
 
-If the `myo_warp` uv environment already exists and is activated:
+From the repository root, with the project environment active:
 
 ```bash
-cd /home/bavin/my_ws/legged_systems/myowarp
-python -m pip install -e .
-python -m pip install -r requirements.txt
-```
-
-If using uv from scratch:
-
-```bash
-cd /home/bavin/my_ws/legged_systems/myowarp
-uv venv myo_warp --python 3.11
-source myo_warp/bin/activate
+uv pip install -e ./rsl_rl
 uv pip install -e .
-uv pip install -r requirements.txt
 ```
 
-## Smoke Checks
-
-Check that the XML loads with CPU MuJoCo:
-
-```bash
-python scripts/check_model.py --model models/22muscle_2D/myoLeg22_2D_TUTORIAL.xml
-```
-
-Run a short random rollout through MuJoCo Warp:
-
-```bash
-python -m myowarp.train.random_rollout \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --num-envs 64 \
-  --steps 10
-```
-
-
-OSL 80-muscle CPU checks:
-
-```bash
-python scripts/check_model.py --model models/80muscle/myoLeg80_OSL_KA/myolegs_OSL_KA.xml
-python -m myowarp.train.random_rollout --config configs/imitation_osl80_default.json --backend cpu --num-envs 1 --steps 5
-```
+The scripts also prepend the local RSL-RL source directory, ensuring that the
+checked-out version is selected when they are launched from this repository.
 
 ## Train
 
-Training uses the Warp/GPU environment.
+```bash
+python scripts/train.py h1_with_osl_velocity \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 10001
+```
+
+Motion tracking:
 
 ```bash
-cd /home/bavin/my_ws/legged_systems/myowarp
-python -m myowarp.train.train_ppo \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json
+python scripts/train.py h1_with_osl_tracking \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 30000
 ```
 
-Useful overrides:
+Dual-policy full-observation velocity tracking:
 
 ```bash
-python -m myowarp.train.train_ppo \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --num-envs 128 \
-  --n-steps 64 \
-  --batch-size 8192 \
-  --iterations 100 \
-  --device cuda
+python scripts/train.py h1_with_osl_dual_full_velocity \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 10001
 ```
 
-`total_timesteps` is total simulation samples, not PPO update count:
-
-```text
-updates = total_timesteps / (num_envs * n_steps)
-```
-
-For example, `1024 envs * 64 n_steps = 65,536 samples/update`, so
-`30,000,000 timesteps` is about `458` PPO updates.
-
-Training prints one line per PPO update:
-
-```text
-update=... step=... reward=... ep_return=... ep_len=... done_traj=... done_height=... kl=...
-```
-
-Checkpoints and logs are written to:
-
-```text
-results/train_session_YYYYMMDD-HHMMSS/
-results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt
-results/train_session_YYYYMMDD-HHMMSS/train_log.jsonl
-```
-
-## Metric Eval
-
-By default, eval uses CPU MuJoCo, not Warp. This is usually faster and simpler
-for checking one policy.
+Dual-policy partial-observation velocity tracking:
 
 ```bash
-python -m myowarp.train.eval_policy \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
-  --steps 1000 \
-  --device cpu
+python scripts/train.py h1_with_osl_dual_partial_velocity \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 10001
 ```
 
-Eval prints episode return, episode length, and termination cause:
-
-```text
-episode_done step=... return=... len=... cause=trajectory=1
-termination_counts={'trajectory': ..., 'height': ..., 'truncated': ..., 'out_of_reference': ...}
-```
-
-To force Warp eval:
+Dual-policy full-observation motion tracking:
 
 ```bash
-python -m myowarp.train.eval_policy \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
-  --steps 1000 \
-  --backend warp \
-  --num-envs 64 \
-  --device cuda
+python scripts/train.py h1_with_osl_dual_full_tracking \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 30000
 ```
 
-## GUI Eval
-
-By default, the viewer also uses CPU MuJoCo.
+Dual-policy partial-observation motion tracking:
 
 ```bash
-python -m myowarp.train.view_policy \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
-  --device cpu
+python scripts/train.py h1_with_osl_dual_partial_tracking \
+  --device cuda:0 \
+  --num-envs 4096 \
+  --max-iterations 30000
 ```
 
-Run for a fixed number of control steps:
+Training output is written beneath:
+
+```text
+logs/rsl_rl/h1_with_osl_velocity_standalone/<timestamp>[_run-name]/
+```
+
+Motion runs use the corresponding `h1_with_osl_tracking_standalone` directory.
+Dual-policy runs use `h1_with_osl_dual_full_velocity_standalone`.
+Partial-observation runs use `h1_with_osl_dual_partial_velocity_standalone`.
+Dual motion runs use `h1_with_osl_dual_full_tracking_standalone`.
+Partial dual motion runs use `h1_with_osl_dual_partial_tracking_standalone`.
+
+Resume from a checkpoint with `--resume path/to/model_ITERATION.pt`. The old task
+alias `MyoWarp-H1-With-OSL-Flat` is also accepted for convenience.
+
+## Evaluate
 
 ```bash
-python -m myowarp.train.view_policy \
-  --config configs/imitation_tutorial_22_separated_net_partial_obs.json \
-  --checkpoint results/train_session_YYYYMMDD-HHMMSS/trained_models/step_XXXX.pt \
-  --steps 1000 \
-  --device cpu
+python scripts/eval.py h1_with_osl_velocity \
+  --checkpoint-file logs/rsl_rl/h1_with_osl_velocity_standalone/RUN/model_ITERATION.pt \
+  --command 0.5 0.0 0.0 \
+  --viewer
 ```
 
-Use `--speed 0.5` or `--speed 2.0` to slow down or speed up playback.
+Motion-tracking evaluation starts from a reference frame instead of taking a
+velocity command:
 
-## Important Differences From MyoAssist
-
-- Training uses a custom PyTorch PPO loop, not Stable-Baselines3 PPO.
-- Checkpoints are `.pt`, not Stable-Baselines3 `.zip`.
-- Training simulation runs through MuJoCo Warp; CPU eval/view runs through
-  regular MuJoCo.
-- The MyoSuite `MujocoEnv` wrapper is not used here.
-- The tutorial config uses intact musculoskeletal legs plus two ankle exo actuators
-  (`Exo_R`, `Exo_L`). The OSL config uses the default 80-muscle OSL_KA
-  transfemoral prosthesis model with OSL knee/ankle motors.
-- Exact CPU MuJoCo and MuJoCo Warp dynamics may differ slightly.
-
-## GitHub / Repo Hygiene
-
-Do not commit large generated folders:
-
-```text
-myo_warp/
-results/
-__pycache__/
-*.pyc
-*.egg-info/
-.pytest_cache/
-.warp/
+```bash
+python scripts/eval.py h1_with_osl_tracking \
+  --checkpoint-file logs/rsl_rl/h1_with_osl_tracking_standalone/RUN/model_ITERATION.pt \
+  --start-frame 0 \
+  --deterministic \
+  --viewer
 ```
 
-Commit the source and small required assets:
+Without `--deterministic`, motion evaluation matches the source evaluator: it
+keeps reset/startup/actor randomization, disables pushes, and runs one episode
+per environment (1,024 environments by default when no viewer is requested).
 
-```text
-myowarp/
-configs/
-models/
-reference_data/
-scripts/
-README.md
-requirements.txt
-pyproject.toml
-uv.lock
+For a checkpoint-free CPU smoke test:
+
+```bash
+python scripts/eval.py h1_with_osl_velocity \
+  --agent zero \
+  --device cpu \
+  --steps 10
 ```
 
-Use Git LFS if you intentionally want to version large trained `.pt`
-checkpoints.
+More command examples are collected in [docs/cmds.md](docs/cmds.md).
+
+## Test
+
+```bash
+python -m pytest -q \
+  tests/test_h1_with_osl_velocity.py \
+  tests/test_h1_with_osl_tracking.py \
+  tests/test_h1_with_osl_dual_full_velocity.py \
+  tests/test_h1_with_osl_dual_partial_velocity.py \
+  tests/test_h1_with_osl_dual_full_tracking.py \
+  tests/test_h1_with_osl_dual_partial_tracking.py
+```
+
+The tests validate the model/action contract, actor and critic observation
+dimensions, domain randomization, reward-term coverage, and a finite CPU rollout.

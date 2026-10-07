@@ -11,6 +11,14 @@ dist/
 .venv/
 venv/
 runs/
+/logs/
 wandb/
 checkpoints/
 *.pt
+
+# Vendored RSL-RL generated files and local editor settings
+rsl_rl/*.egg-info/
+rsl_rl/.idea/
+rsl_rl/.vscode/
+rsl_rl/.ruff_cache/
+rsl_rl/docs/_build/

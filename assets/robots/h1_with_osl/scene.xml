@@ -1,0 +1,4 @@
+<mujoco model="h1_with_osl scene">
+  <include file="h1_with_osl.xml"/>
+  <include file="../../unitree_viewer_scene.xml"/>
+</mujoco>
