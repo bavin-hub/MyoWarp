@@ -1,0 +1,132 @@
+<mujoco model="cmu_leg_ablebodied">
+  <compiler angle="radian" autolimits="true" meshdir="meshes"/>
+  <option timestep="0.0002" integrator="implicitfast"  gravity="0 -9.81 0"/>
+
+  <default>
+    <geom contype="0" conaffinity="0" group="2" density="0"
+          rgba=".62 .67 .78 1"/>
+    <default class="collision">
+      <geom contype="1" conaffinity="1" group="3" rgba=".8 .3 .3 1"/>
+    </default>
+  </default>
+
+
+  <asset>
+    <mesh name="ankle_driven_link" file="ankle_driven_link.stl"/>
+    <mesh name="ankle_foot" file="ankle_foot.stl"/>
+    <mesh name="ankle_motor_rotor" file="ankle_motor_rotor.stl"/>
+    <mesh name="kneeMotorRotor" file="kneeMotorRotor.stl"/>
+    <mesh name="kneeSEA" file="kneeSEA.stl"/>
+    <mesh name="kneeStator" file="kneeStator.stl"/>
+    <mesh name="shank" file="shank.stl"/>
+    <mesh name="short_tendon" file="short_tendon.stl"/>
+  </asset>
+
+  <visual><global offwidth="1400" offheight="1000"/></visual>
+
+  <worldbody>
+    <!-- world is +y up, so these cameras carry explicit orientations -->
+    <camera name="sagittal" pos="0.03 -0.13 0.62" quat="1 0 0 0"/>
+    <camera name="frontal"  pos="0.62 -0.13 0" quat="0.7071068 0 0.7071068 0"/>
+    <light pos="0.4 1.2 0.6" dir="-0.3 -1 -0.5" directional="true"/>
+    <geom name="ground" type="plane" size="3 3 .1" pos="0 -0.42 0"
+          quat="0.7071068 -0.7071068 0 0" class="collision" rgba=".35 .37 .40 1"/>
+
+    <body name="kneeStator" pos="0 0 0">
+      <inertial pos="0.0012405882 0.0103705382 0.00897510301" mass="1.230053753"
+                fullinertia="2.059934258e-03 1.730278973e-03 2.560104245e-03 3.289950673e-05 5.036343027e-05 -1.199866665e-04"/>
+      <geom type="mesh" mesh="kneeStator" quat="1 0 0 0" pos="0 0 0"/>
+      <site name="socket_mount" pos="0 0.0775 0.002" size="0.006"/>
+
+    <body name="kneeMotorRotor" pos="0 0 0">
+      <joint name="knee_motor" type="hinge" axis="0 0 -1" armature="0.534000000" damping="5.3699" frictionloss="3.1079"/>
+      <inertial pos="-1.40533e-05 1.1986e-07 0.0169466485" mass="0.376610663"
+                fullinertia="2.242645211e-04 2.242920109e-04 1.078822829e-04 -2.342319900e-10 -7.831577737e-08 6.670595700e-10"/>
+      <geom type="mesh" mesh="kneeMotorRotor" quat="0 0 0 1" pos="0 0 0.0045"/>
+    </body>
+
+    <body name="shank" pos="0 0 0">
+      <joint name="knee" type="hinge" axis="0 0 -1" range="-0.034907 1.570796" stiffness="0" springref="0" frictionloss="0.3470"/>
+      <inertial pos="0.00177840622 -0.105800963 0.00725269079" mass="0.956309198"
+                fullinertia="4.405399438e-03 1.234145413e-03 4.719314195e-03 7.580350296e-05 -5.845589310e-05 3.132648657e-04"/>
+      <geom type="mesh" mesh="shank" quat="1 0 0 0" pos="0 0 0.019975"/>
+
+    <body name="kneeSEA" pos="0 0 0">
+      <inertial pos="0.0430964854 -0.0249958611 0.0108768646" mass="0.741862363"
+                fullinertia="3.333751821e-03 2.483180805e-03 3.900178930e-03 -7.102258800e-04 -2.002619943e-04 1.649682809e-04"/>
+      <geom type="mesh" mesh="kneeSEA" quat="1 0 0 0" pos="0 0 0"/>
+      </body>
+
+    <body name="ankle_motor_rotor" pos="0.00034 -0.115 0">
+      <joint name="ankle_motor" type="hinge" axis="0 0 1" armature="0.468300000" damping="0.1711" frictionloss="5.0357"/>
+      <inertial pos="-5.97412e-06 3.61311e-06 0.0223396139" mass="0.257000039"
+                fullinertia="1.026794422e-04 1.026784952e-04 7.050305526e-05 -1.443017010e-09 -1.227162634e-08 1.046098850e-08"/>
+      <geom type="mesh" mesh="ankle_motor_rotor" quat="0 0.7071068 0 -0.7071068" pos="0 0 0.0001"/>
+      </body>
+
+    <body name="ankle_driven_link" pos="0.00034 -0.115 0">
+      <joint name="ankle_drive" type="hinge" axis="0 0 1"/>
+      <inertial pos="-0.0291818287 -0.00135152527 0.00845685034" mass="0.453723042"
+                fullinertia="8.364151452e-04 1.347213540e-03 7.603957763e-04 2.344455198e-05 -5.680764088e-05 -2.246130110e-06"/>
+      <geom type="mesh" mesh="ankle_driven_link" quat="0 0 0 1" pos="0 0 -0.005"/>
+
+    <body name="short_tendon" pos="-0.06993 -0.00319 0">
+      <joint name="ankle_coupler" type="hinge" axis="0 0 1"/>
+      <inertial pos="4.562771e-05 -0.0350820843 0.0020372004" mass="0.088166414"
+                fullinertia="1.357681215e-04 7.718499992e-06 1.389439105e-04 -1.689753234e-07 6.599650000e-11 -5.001228558e-08"/>
+      <geom type="mesh" mesh="short_tendon" quat="1 0 0 0" pos="0 0 0.00185"/>
+        </body>
+      </body>
+
+    <body name="ankle_foot" pos="0.00062 -0.2131 0">
+      <joint name="ankle" type="hinge" axis="0 0 1" range="-0.523599 0.523599"/>
+      <inertial pos="0.0034676513 -0.0478722077 0.0021504664" mass="1.140885497"
+                fullinertia="1.442422345e-03 3.617763592e-03 4.095901990e-03 -5.139954289e-04 1.036894881e-06 1.482638072e-05"/>
+      <geom type="mesh" mesh="ankle_foot" quat="1 0 0 0" pos="0 0 0.00187"/>
+        <geom name="toe"  class="collision" type="sphere" size="0.012" pos="0.156 -0.096 0"/>
+        <geom name="heel" class="collision" type="sphere" size="0.012" pos="-0.09 -0.096 0"/>
+        <site name="imu_foot" pos="0 0 0" size="0.006"/>
+      </body>
+    </body>
+    </body>
+  </worldbody>
+
+  <!-- ankle four-bar loop closure: tendon D -> foot -->
+  <equality>
+    <connect body1="short_tendon" body2="ankle_foot" anchor="0.00011 -0.085 0"
+             solref="0.0004 1" solimp="0.99 0.9999 0.0001"/>
+  </equality>
+
+  <tendon>
+    <fixed name="knee_sea" stiffness="1666.0" damping="16.6600">
+      <joint joint="knee_motor" coef="1"/>
+      <joint joint="knee" coef="-1"/>
+    </fixed>
+    <fixed name="ankle_sea" stiffness="993.8613" damping="9.9386">
+      <joint joint="ankle_motor" coef="1"/>
+      <joint joint="ankle_drive" coef="-1"/>
+    </fixed>
+  </tendon>
+
+  <actuator>
+    <motor name="knee_act" joint="knee_motor" ctrlrange="-100.0 100.0" forcerange="-100.0 100.0"/>
+    <motor name="ankle_act" joint="ankle_motor" ctrlrange="-150.0 150.0" forcerange="-150.0 150.0"/>
+    <velocity name="knee_vel" joint="knee_motor" kv="155.3467" ctrlrange="-3.979351 3.979351" forcerange="-100.0 100.0"/>
+    <velocity name="ankle_vel" joint="ankle_motor" kv="136.2338" ctrlrange="-6.963864 6.963864" forcerange="-150.0 150.0"/>
+  </actuator>
+  <sensor>
+    <jointpos name="knee_q"        joint="knee"/>
+    <jointvel name="knee_qd"       joint="knee"/>
+    <jointpos name="knee_motor_q"  joint="knee_motor"/>
+    <jointpos name="ankle_q"       joint="ankle"/>
+    <jointvel name="ankle_qd"      joint="ankle"/>
+    <jointpos name="ankle_drive_q" joint="ankle_drive"/>
+    <jointpos name="ankle_motor_q" joint="ankle_motor"/>
+    <tendonpos name="knee_sea_x"   tendon="knee_sea"/>
+    <tendonpos name="ankle_sea_x"  tendon="ankle_sea"/>
+    <framequat name="foot_quat"    objtype="site" objname="imu_foot"/>
+    <gyro     name="foot_gyro"     site="imu_foot"/>
+    <accelerometer name="foot_acc" site="imu_foot"/>
+  </sensor>
+
+</mujoco>

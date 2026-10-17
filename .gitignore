@@ -9,6 +9,7 @@ __pycache__/
 build/
 dist/
 .venv/
+.venv-locomujoco/
 venv/
 runs/
 /logs/
@@ -22,3 +23,4 @@ rsl_rl/.idea/
 rsl_rl/.vscode/
 rsl_rl/.ruff_cache/
 rsl_rl/docs/_build/
+/MUJOCO_LOG.TXT
