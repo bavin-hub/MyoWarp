@@ -1,0 +1,8 @@
+Ported from MyoSuite 3.0.0 (Apache-2.0), Copyright MyoSuite Authors.
+Source: https://github.com/MyoHub/myosuite
+policy.py, trajectory.py, running_stats.py, model_versions.py retain upstream logic.
+model.py extracts full-body model edits and finger token lists, removes native fallback/caching and MyoSuite texture lookup, and loads bundled assets. hf_io.py retains legacy cache lookup only.
+Bundled model assets originate from musclemimic-models 1.0.6; model_versions.py identifies this bundled release without package lookup and applies the checkpoint-compatible 1.0.5 attribute values at build time.
+No prosim runtime code is imported.
+
+actor_torch.py and fullbody_obs_torch.py are ported from MyoSuite 3.0.0; local imports and rotation math replace mjlab dependencies.

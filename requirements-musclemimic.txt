@@ -1,0 +1,7 @@
+# Independent native evaluation environment; no prosim or MyoSuite imports.
+mujoco==3.11.0
+numpy>=2
+scipy>=1.14
+jax==0.11.2
+orbax-checkpoint==0.12.7
+huggingface_hub>=0.20

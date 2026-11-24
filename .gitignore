@@ -9,7 +9,10 @@ __pycache__/
 build/
 dist/
 .venv/
-.venv-locomujoco/
+.venv-musclemimic/
+/assets/musclemimic/checkpoints/
+/assets/musclemimic/motions/
+/assets/musclemimic/references/
 venv/
 runs/
 /logs/
@@ -24,3 +27,9 @@ rsl_rl/.vscode/
 rsl_rl/.ruff_cache/
 rsl_rl/docs/_build/
 /MUJOCO_LOG.TXT
+
+# Downloaded H1-2 AMASS policy and motion artifacts
+/assets/h1_amass/checkpoints/
+/assets/h1_amass/motions/
+
+/assets/reference_clips/walk1_subject1_h1_2.npz

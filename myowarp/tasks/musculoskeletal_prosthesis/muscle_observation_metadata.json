@@ -1,0 +1,41 @@
+{
+  "experiment": {
+    "env_params": {
+      "enable_muscle_length_observations": true,
+      "enable_muscle_velocity_observations": true,
+      "enable_muscle_force_observations": true,
+      "enable_muscle_excitation_observations": true,
+      "enable_muscle_activation_observations": true,
+      "enable_touch_sensor_observations": true,
+      "goal_params": {
+        "n_step_lookahead": 5,
+        "n_step_stride": 20,
+        "upper_body_xml_name": "torso",
+        "enable_motion_phase": true,
+        "use_concise_lookahead": true,
+        "sites_for_mimic": [
+          "pelvis_mimic",
+          "upper_body_mimic",
+          "head_mimic",
+          "left_shoulder_mimic",
+          "left_elbow_mimic",
+          "left_hand_mimic",
+          "right_shoulder_mimic",
+          "right_elbow_mimic",
+          "right_hand_mimic",
+          "left_hip_mimic",
+          "left_knee_mimic",
+          "left_ankle_mimic",
+          "left_toes_mimic",
+          "right_hip_mimic",
+          "right_knee_mimic",
+          "right_ankle_mimic",
+          "right_toes_mimic"
+        ]
+      }
+    },
+    "len_obs_history": 1,
+    "split_goal": false
+  },
+  "layout_note": "Existing 2418-value MyoFullBody layout; the RSL checkpoint has no environment metadata."
+}

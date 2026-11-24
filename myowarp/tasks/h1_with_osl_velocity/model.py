@@ -206,7 +206,9 @@ def make_h1_with_osl_home_qpos(model: mujoco.MjModel) -> np.ndarray:
     return home_qpos
 
 
-def _make_flat_scene_spec(model_path: str | Path) -> mujoco.MjSpec:
+def _make_flat_scene_spec(
+    model_path: str | Path, *, viewer_scene_path: str | Path | None = None
+) -> mujoco.MjSpec:
     """Assemble the robot after a fixed terrain body, matching MJLab's scene."""
     robot_path = Path(model_path).resolve()
     sibling_robot_path = robot_path.with_name("h1_with_osl.xml")
@@ -214,7 +216,11 @@ def _make_flat_scene_spec(model_path: str | Path) -> mujoco.MjSpec:
         robot_path = sibling_robot_path
     robot_spec = mujoco.MjSpec.from_file(str(robot_path))
 
-    viewer_scene_path = robot_path.parents[2] / "unitree_viewer_scene.xml"
+    viewer_scene_path = (
+        Path(viewer_scene_path)
+        if viewer_scene_path is not None
+        else robot_path.parents[2] / "unitree_viewer_scene.xml"
+    )
     if viewer_scene_path.exists():
         scene_spec = mujoco.MjSpec.from_file(str(viewer_scene_path))
         terrain_geom = next(

@@ -1,3 +1,0 @@
-[submodule "loco-mujoco"]
-	path = loco-mujoco
-	url = https://github.com/robfiras/loco-mujoco.git

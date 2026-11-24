@@ -1,0 +1,6 @@
+# Isolated from the H1 environment, which stays on MuJoCo-Warp 3.5.
+-r requirements-musclemimic.txt
+mujoco-warp==3.11.0
+warp-lang==1.18.0
+torch>=2.6
+-e ./rsl_rl

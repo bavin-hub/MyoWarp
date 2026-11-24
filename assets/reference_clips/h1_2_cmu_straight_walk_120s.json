@@ -1,0 +1,15 @@
+{
+  "frames": 12001,
+  "duration_seconds": 120.0,
+  "mean_foot_position_error_m": 0.04872504217968917,
+  "p95_foot_position_error_m": 0.1481366840225778,
+  "max_foot_position_error_m": 0.16460962184995545,
+  "mean_foot_orientation_error_deg": 7.35717654468344,
+  "max_foot_orientation_error_deg": 17.57529499371023,
+  "joint_limit_fraction": 0.31014082159820017,
+  "position_scale_m": 0.1,
+  "orientation_scale_rad": 0.5,
+  "inferred_stance_fraction": 0.6217815182068162,
+  "contact_height_threshold_m": 0.07779614606241018,
+  "contact_speed_threshold_m_s": 0.6
+}
